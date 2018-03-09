@@ -129,8 +129,7 @@ crosstalk::bscols(
       label = "Countries",
       sharedData = sd,
       group = ~country_name)
-  ),
-  widths = c(5, 5, 15)
+  )
 )
 ```
 
