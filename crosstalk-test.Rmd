@@ -1,0 +1,165 @@
+---
+title: "Crosstalk test with fake IP address data"
+author: "Matt Dray"
+output:
+  flexdashboard::flex_dashboard:
+    theme: cerulean
+    social: menu
+    source_code: embed
+    favicon: img/map.png
+---
+
+```{r setup, include=FALSE}
+# packages
+
+library(crosstalk)
+library(dplyr)
+library(leaflet)
+library(DT)
+
+# data
+
+set.seed(1337)
+
+fake_ip_geo <- readRDS("data/fake_ip_geo.RDS") %>% 
+  select(-country_code, -region_code, -time_zone, -metro_code) %>% 
+  dplyr::mutate(
+    group = sample(  # randomly allocate to one of three groups
+      c("Group A", "Group B", "Group C"),
+      size = 500,
+      replace = TRUE
+    ),
+    device = sample(  # randomly allocate to one of three groups
+      c("Phone", "Laptop", "Desktop"),
+      size = 500,
+      replace = TRUE
+    ),
+    latitude = as.numeric(as.character(latitude)),  # must be numeric
+    longitude = as.numeric(as.character(longitude))
+  ) %>% 
+  dplyr::group_by(longitude, latitude) %>% 
+  dplyr::slice(1) %>%  # just get one example of each latlong pair
+  dplyr::ungroup()
+
+# make factors character for use in popups
+
+fake_ip_geo_nofactor <- fake_ip_geo %>% 
+  dplyr::mutate_if(is.factor, as.character)
+
+
+# shared data object
+
+sd <- SharedData$new(fake_ip_geo)
+```
+
+
+Column {data-width=600}
+-------------------------------------
+    
+### Geolocated IP addresses
+    
+```{r map}
+set.seed(1337)
+
+leaflet::leaflet(sd) %>%
+  leaflet::addProviderTiles(providers$OpenStreetMap) %>% 
+  leaflet::addAwesomeMarkers(
+    popup = ~paste0(
+    "<b>IP: ", fake_ip_geo$ip, "</b>",
+    "<br>",
+    "<br>Group: ", fake_ip_geo_nofactor$group,
+    "<br>Device: ", fake_ip_geo_nofactor$device,
+    "<br>",
+    "<br>Country: ", ifelse(fake_ip_geo_nofactor$country_name == "", "unknown", fake_ip_geo_nofactor$country_name),
+    "<br>Region: ", ifelse(fake_ip_geo_nofactor$region_name == "", "unknown", fake_ip_geo_nofactor$region_name),
+    "<br>City: ", ifelse(fake_ip_geo_nofactor$city == "", "unknown", fake_ip_geo_nofactor$city)
+    ),
+    icon = awesomeIcons(
+      library = "ion",
+      icon = ifelse(
+        test = fake_ip_geo_nofactor$device == "Phone", 
+        yes = "ion-android-phone-portrait",
+        no = ifelse(
+          test = fake_ip_geo_nofactor$device == "Laptop", 
+          yes = "ion-android-laptop",
+          no = "ion-android-desktop"
+        )
+      ),
+      iconColor = "white",
+      markerColor = ifelse(
+        test = fake_ip_geo_nofactor$group == "Group A", 
+        yes = "lightred",
+        no = ifelse(
+          test = fake_ip_geo_nofactor$group == "Group B", 
+          yes = "red",
+          no = "darkred"
+        )
+      )
+    )
+  )
+```
+    
+Column {data-width=400}
+-------------------------------------
+
+### Make selections
+
+#### Filters
+
+You can select multiple groups, devices and countries.
+
+```{r filters}
+crosstalk::bscols(
+  list(
+    filter_checkbox(
+      id = "group",
+      label = "Groups",
+      sharedData = sd,
+      group = ~group,
+      inline = TRUE
+      ),
+    filter_checkbox(
+      id = "device",
+      label = "Devices",
+      sharedData = sd,
+      group = ~device,
+      inline = TRUE),
+    filter_select(
+      id = "country_name",
+      label = "Countries",
+      sharedData = sd,
+      group = ~country_name)
+  ),
+  widths = c(5, 5, 15)
+)
+```
+
+#### How to
+
+* Filter the data (options above) and the map and table will auto-update
+* You can also select points using the movable/resizeable selection tool (click the broken rectangle button in the upper left of the map)
+* You can also click rows of the datatable to highlight those points
+* Zoom with the + and - buttons on the map (upper left), or with your mouse wheel
+* Click markers to get information about that point
+
+#### Purpose
+
+* Mapping ([leaflet](https://rstudio.github.io/leaflet/)) geolocation ([freegeoip](https://github.com/luiscape/freegeoip)) of artificially-generated IP addresses ([generator](https://github.com/paulhendricks/generator)) with arbitrarily-assigned colours and icons ([ionicons](http://ionicons.com/))
+* Wrapping this into a user-friendly interface ([flexdashboard](https://rmarkdown.rstudio.com/flexdashboard/)) and including a table ([DT](https://rstudio.github.io/DT/))
+* Allowing data selections to impact across both the map and table ([crosstalk](https://rstudio.github.io/crosstalk/))
+
+*Note that none of these data are real. They've been randomly generated.*
+
+### Datatable
+    
+```{r}
+datatable(
+  sd,
+  extensions="Scroller",
+  rownames = FALSE,
+  style = "bootstrap",
+  #class = "compact",
+  width = "100%",
+  options = list(deferRender = TRUE, scrollY = 300, scroller = TRUE))
+
+```
