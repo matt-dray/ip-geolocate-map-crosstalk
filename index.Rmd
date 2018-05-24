@@ -3,7 +3,7 @@ title: "Crosstalk test with fake IP address data"
 author: "Matt Dray"
 output:
   flexdashboard::flex_dashboard:
-    theme: cerulean
+    theme: paper
     social: menu
     source_code: embed
     favicon: img/map.png
@@ -110,26 +110,25 @@ You can select multiple groups, devices and countries.
 
 ```{r filters}
 crosstalk::bscols(
-  list(
-    filter_checkbox(
-      id = "group",
-      label = "Groups",
-      sharedData = sd,
-      group = ~group,
-      inline = TRUE
-      ),
-    filter_checkbox(
-      id = "device",
-      label = "Devices",
-      sharedData = sd,
-      group = ~device,
-      inline = TRUE),
-    filter_select(
-      id = "country_name",
-      label = "Countries",
-      sharedData = sd,
-      group = ~country_name)
-  )
+  filter_checkbox(
+    id = "group",
+    label = "Groups",
+    sharedData = sd,
+    group = ~group,
+    inline = FALSE
+  ),
+  filter_checkbox(
+    id = "device",
+    label = "Devices",
+    sharedData = sd,
+    group = ~device,
+    inline = FALSE
+  ),
+  filter_select(
+    id = "country_name",
+    label = "Countries",
+    sharedData = sd,
+    group = ~country_name)
 )
 ```
 
@@ -154,10 +153,11 @@ crosstalk::bscols(
 ```{r}
 datatable(
   sd,
-  extensions="Scroller",
+  filter = "top",
+  extensions = "Scroller",
   rownames = FALSE,
   style = "bootstrap",
-  #class = "compact",
+  class = "compact",
   width = "100%",
   options = list(deferRender = TRUE, scrollY = 300, scroller = TRUE))
 
